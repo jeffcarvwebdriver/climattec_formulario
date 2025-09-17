@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulário Cliente - Limpeza Split</title>
+<style>
+  body { 
+    font-family: Arial, sans-serif; 
+    background: #e8f0fb; 
+    margin:0; 
+    padding:0; 
+  }
+
+  .container { 
+    max-width: 500px; 
+    margin: 30px auto; 
+    background: #fff; 
+    padding: 25px 30px; 
+    border-radius: 15px; 
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1); 
+    transition: transform 0.3s;
+  }
+  .container:hover {
+    transform: translateY(-5px);
+  }
+
+  h2 { 
+    text-align:center; 
+    color:#1a3e70; 
+    margin-bottom: 25px; 
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  label { 
+    display:block; 
+    margin:10px 0 5px; 
+    font-weight:bold; 
+    color:#1a3e70;
+  }
+
+  select, input[type="text"], input[type="file"], button { 
+    width:100%; 
+    padding:12px; 
+    margin-bottom:12px; 
+    border-radius:8px; 
+    border:1px solid #b0c4de; 
+    font-size:16px; 
+    transition: 0.3s; 
+  }
+
+  select:focus, input[type="text"]:focus, input[type="file"]:focus {
+    border-color:#3498db;
+    box-shadow: 0 0 5px rgba(52,152,219,0.5);
+    outline:none;
+  }
+
+  button { 
+    background:#3498db; 
+    color:#fff; 
+    border:none; 
+    cursor:pointer; 
+    font-weight:bold;
+    transition:0.3s; 
+  }
+
+  button:hover { 
+    background:#1a3e70; 
+  }
+
+  #resultado { 
+    background:#dce6f2; 
+    color:#1a3e70;
+    padding:15px; 
+    border-radius:8px; 
+    margin-top:12px; 
+    text-align:center; 
+    font-weight:bold;
+  }
+
+  #progressBar { 
+    width:100%; 
+    background:#d0e1f7; 
+    border-radius:6px; 
+    margin-top:12px; 
+    display:none; 
+  }
+
+  #progressBar div { 
+    height:22px; 
+    width:0%; 
+    background:#3498db; 
+    text-align:center; 
+    color:#fff; 
+    border-radius:6px; 
+    line-height:22px;
+    font-weight:bold;
+  }
+
+  #preview { 
+    display:none; 
+    max-width:100%; 
+    margin-bottom:12px; 
+    border-radius:8px; 
+    border:1px solid #b0c4de; 
+  }
+
+  .logo-container {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .logo {
+    max-width: 180px;
+    height: auto;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo-container">
+  <img src="climattec.png" alt="Climattec Logo" class="logo">
+</div>
+<h2>Formulário do Cliente</h2>
+
+<label for="clienteNome">Nome do cliente:</label>
+<input type="text" id="clienteNome" placeholder="Digite seu nome">
+
+<label for="marca">Marca do Aparelho:</label>
+<input type="text" id="marca" placeholder="Ex.: Daikin, Philco">
+
+<label for="btu">Capacidade (BTU):</label>
+<select id="btu">
+  <option value="9000">9.000 BTU</option>
+  <option value="12000">12.000 BTU</option>
+  <option value="18000">18.000 BTU</option>
+</select>
+
+<label for="ultima">Última limpeza:</label>
+<select id="ultima">
+  <option value="menor_1">Menos de 1 ano</option>
+  <option value="maior_1">Mais de 1 ano</option>
+</select>
+
+<label for="media">Anexar fotos:</label>
+<input type="file" id="media" accept="image/*" multiple>
+<div id="preview"></div>
+
+<button onclick="enviarFormulario()">Enviar</button>
+<div id="progressBar"><div id="progress"></div></div>
+<div id="resultado"></div>
+</div>
+
+<script type="module">
+  // === Firebase Firestore ===
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB4fInR5lCKCpTWDhWjiJQeExbT9jyzV4o",
+    authDomain: "splitcleaningapp.firebaseapp.com",
+    projectId: "splitcleaningapp",
+    storageBucket: "splitcleaningapp.appspot.com",
+    messagingSenderId: "823173337910",
+    appId: "1:823173337910:web:485b8463354cd98e985997"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // === Supabase Storage ===
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  const SUPABASE_URL = "https://jnippvqhwjihzsuykfos.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaXBwdnFod2ppaHpzdXlrZm9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwNDkzNDEsImV4cCI6MjA3MzYyNTM0MX0.KR1Q83w6qvwbbpUIS4IRHXwyiPrfC9rU_tSJASy5c4I"; // Use a Public Anon Key
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Preview múltiplas imagens
+  document.getElementById('media').addEventListener('change', (event) => {
+    const files = event.target.files;
+    const previewContainer = document.getElementById('preview');
+    previewContainer.innerHTML = '';
+
+    if (files.length > 0) {
+      Array.from(files).forEach(file => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.style.maxWidth = "100%";
+        img.style.marginBottom = "10px";
+        img.style.borderRadius = "8px";
+        previewContainer.appendChild(img);
+      });
+      previewContainer.style.display = "block";
+    } else {
+      previewContainer.style.display = "none";
+    }
+  });
+
+  // Função upload Supabase (um arquivo)
+  async function uploadFotoSupabase(file, progressCallback) {
+    const safeName = Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    progressCallback(30);
+    const { error } = await supabase.storage.from("fotos").upload(safeName, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    const { data: publicUrl } = supabase.storage.from("fotos").getPublicUrl(safeName);
+    progressCallback(100);
+    return publicUrl.publicUrl;
+  }
+
+  // Enviar formulário
+  async function enviarFormulario() {
+  const clienteNome = document.getElementById('clienteNome').value.trim();
+  const marca = document.getElementById('marca').value.trim();
+  const btu = parseInt(document.getElementById('btu').value);
+  const ultima = document.getElementById('ultima').value;
+  const files = document.getElementById('media').files;
+
+  if (!clienteNome || !marca) {
+    alert("Preencha todos os campos obrigatórios!");
+    return;
+  }
+
+  const resultado = document.getElementById('resultado');
+  const progressBar = document.getElementById('progressBar');
+  const progress = document.getElementById('progress');
+
+  try {
+    let fotosInfo = [];
+    if (files.length > 0) {
+      progressBar.style.display = "block";
+      progress.style.width = "0%";
+      progress.textContent = "0%";
+
+      for (let i = 0; i < files.length; i++) {
+        // Nome do arquivo com nome do cliente
+        const safeName = clienteNome.replace(/[^a-zA-Z0-9]/g, "_") + "_" + Date.now() + "_" + files[i].name;
+        
+        const { error } = await supabase.storage.from("fotos").upload(safeName, files[i], { cacheControl: "3600", upsert: false });
+        if (error) throw error;
+
+        const { data: publicUrl } = supabase.storage.from("fotos").getPublicUrl(safeName);
+        fotosInfo.push({ nomeArquivo: files[i].name, url: publicUrl.publicUrl });
+      }
+    }
+
+    // Salvar **tudo junto** no Firestore
+    await addDoc(collection(db, "pedidos"), {
+      nomeCliente: clienteNome,
+      marca,
+      btu,
+      ultima,
+      fotos: fotosInfo, // array com {nomeArquivo, url}
+      data: serverTimestamp(),
+      status: "pendente"
+    });
+
+    resultado.innerHTML = "<strong>✅ Formulário enviado com sucesso!</strong>";
+    document.getElementById('clienteNome').value = "";
+    document.getElementById('marca').value = "";
+    document.getElementById('btu').value = "9000";
+    document.getElementById('ultima').value = "menor_1";
+    document.getElementById('media').value = "";
+    document.getElementById('preview').innerHTML = "";
+    document.getElementById('preview').style.display = "none";
+    progressBar.style.display = "none";
+
+  } catch (error) {
+    console.error("❌ Erro geral:", error);
+    resultado.innerHTML = "❌ Erro ao enviar: " + (error.message || error);
+    progressBar.style.display = "none";
+  }
+}
+
+  window.enviarFormulario = enviarFormulario;
+</script>
+
+</body>
+</html>
